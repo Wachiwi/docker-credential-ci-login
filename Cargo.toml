@@ -1,0 +1,12 @@
+[package]
+name = "docker-credential-ci-login"
+version = "0.1.0"
+authors = ["David Schwarzmann <dev@dschwarz.codes>"]
+
+[dependencies]
+json = "0.11.4"
+secrets = "0.11.1"
+rust-crypto = "0.2.36"
+colored = "1.4.0"
+log = "0.3.6"
+env_logger = "0.3.5"
