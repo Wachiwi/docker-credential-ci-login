@@ -1,8 +1,9 @@
 use std;
 use std::slice::Iter;
+use std::clone::Clone;
 use self::Subcommand::*;
 
-#[derive(Debug)]
+#[derive(Copy, Debug)]
 pub enum Subcommand {
     Get,
     Store,
@@ -16,18 +17,24 @@ impl std::string::ToString for Subcommand {
     }
 }
 
-// impl std::convert::From<String> for Subcommand {
-//     fn from(s: String) -> Self {
-//         let mut c = Help;
-//         for cmd in Subcommands::iterator() {
-//             if s == cmd.to_string() {
-//                 c = *cmd.take();
-//             }
-//         }
-//         return c;
-//     }
-// }
+impl std::convert::From<String> for Subcommand {
+    fn from(s: String) -> Self {
+        let mut c = Help;
+        for cmd in iterator() {
+            c = cmd.clone();
+            if s == cmd.to_string() {
+                return c;
+            }
+        }
+        return c;
+    }
+}
 
+impl Clone for Subcommand {
+    fn clone(&self) -> Subcommand {
+        return *self;
+    }
+}
 
 pub fn iterator() -> Iter<'static, Subcommand> {
     static SUBCOMMANDS: [Subcommand;  3] = [Get, Store, Erase];

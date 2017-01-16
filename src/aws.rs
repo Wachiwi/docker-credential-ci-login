@@ -10,7 +10,6 @@ use regex::Regex;
 pub enum AWSError {
     ParseError,
     WeirdAWSResponse
-
 }
 
 pub type AWSResult = Result<(String, String), AWSError>;
@@ -54,24 +53,6 @@ pub fn get_authorization_information() -> AWSResult {
     let decoded = decode_aws_output(out).unwrap();
     return parse_aws_output(&decoded);
 }
-
-
-// Ok(decoded) => {
-//
-//     let decoded_ws = decoded.replace(':', " ");
-//     let mut components = decoded_ws.split_whitespace();
-//
-//     if components.size_hint().0 == 2 {
-//         let auth_info = (components.nth(0).unwrap().to_owned(),
-//             components.nth(1).unwrap().to_owned());
-//         Ok(auth_info);
-//     } else {
-//         panic!("{:?}", AWSError::ParseError);
-//     }
-// },
-// Err(why) => {
-//     Err(AWSError::ParseError);
-// }
 
 pub fn is_aws_ecr_url(s: &String) -> bool {
     let aws_ecr_pattern : Regex = Regex::new(r"(^[a-zA-Z0-9][a-zA-Z0-9-_]*)\.dkr\.ecr\.([a-zA-Z0-9][a-zA-Z0-9-_]*)\.amazonaws\.com(\.cn)?").unwrap();

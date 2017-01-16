@@ -31,6 +31,8 @@ use std::io;
 use std::io::prelude::*;
 use std::fs::File;
 
+use subcommands::Subcommand;
+
 fn print_usage() {
     println!("Usage:\n\tdocker-credential-ci-login <subcommand>\nSubcommands:");
     for cmd in subcommands::iterator() {
@@ -45,6 +47,35 @@ fn read_stdin() -> String {
         input.push_str(&line.unwrap());
     }
     return input;
+}
+
+fn get(server: String) {
+    if aws::is_aws_ecr_url(&server) {
+            // f.write_fmt(format_args!("{}\n", "Viable aws ecr url"));
+            let out = aws::get_authorization_information().unwrap();
+            // f.write_fmt(format_args!("{} {}\n", out.0, out.1));
+
+            let answer = object!{
+                "Username" => out.0,
+                "Secret" => out.1
+            };
+            println!("{}", answer);
+
+    } else {
+        let answer = object!{
+            "Username" => "<token>",
+            "Secret" => ""
+        };
+        println!("{}", answer);
+    }
+}
+
+fn erase(server: String) {
+    // ToDo
+}
+
+fn store(server: String, username: String, password: String) {
+    // ToDo
 }
 
 
@@ -68,46 +99,38 @@ fn main() {
         process::exit(64);
     }
 
+    let cmd : Subcommand = Subcommand::from(subcommand);
+
     env_logger::init().unwrap();
 
+    // Init cache
+
     // Match (switch) on which command
-    let mut f = File::create("/Users/dschwarzmann/dev/docker-credential-ci-login/ci-login.log").expect("Could not create file!");
+    // ToDo: Move next three lines into logging module
+    let mut p : String = env::var("HOME").unwrap();
+    p.push_str("/.ci-login.log");
+    let mut f = File::create(p).expect("Could not create file!");
+
     let input = read_stdin();
-    f.write_fmt(format_args!("{} - {}\n", subcommand, input));
+    f.write_fmt(format_args!("{:?} - {}\n", &cmd, input));
 
-    if aws::is_aws_ecr_url(&input) {
-            f.write_fmt(format_args!("{}\n", "Viable aws ecr url"));
-            let out = aws::get_authorization_information().unwrap();
-            f.write_fmt(format_args!("{} {}\n", out.0, out.1));
-
-            let answer = object!{
-                "Username" => out.0,
-                "Secret" => out.1
-            };
-            println!("{}", answer);
-
-    } else {
-
+    match cmd {
+        Subcommand::Get => {
+            get(input);
+        },
+        Subcommand::Erase => {
+            erase(input);
+        },
+        Subcommand::Store => {
+            let parsed = json::parse(&input).unwrap();
+            store(parsed["ServerURL"].as_str().unwrap().to_owned(),
+                  parsed["Usernmae"].as_str().unwrap().to_owned(),
+                  parsed["Secret"].as_str().unwrap().to_owned());
+        }
+        _ => {
+            print_usage();
+            process::exit(1);
+        }
     }
-
-
-
-
-
-
-
-    // for arg in args {
-    //     println!("{:?}", arg);
-    //     info!("{:?}", arg);
-    // }
-
-    // if args.size_hint().0 < 1 {
-    //     error!("[ERROR] Missing values!");
-    //     process::exit(64);
-    // }
-    //
-    // for arg in args {
-    //     println!("{:?}", arg);
-    //     info!("{:?}", arg);
-    // }
+    process::exit(0);
 }
