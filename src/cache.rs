@@ -1,3 +1,5 @@
+extern crate base64;
+
 use std::fs::{File, OpenOptions, create_dir_all};
 use std::io::{Read, Write};
 use std::os::unix::fs::OpenOptionsExt;
@@ -11,7 +13,7 @@ pub struct CacheEntry {
     pub server: String,
     pub username: String,
     pub token: String,
-    pub expires_at: Instant
+    pub expires_at: SystemTime
 }
 
 pub struct Cache {
@@ -21,17 +23,20 @@ pub struct Cache {
     pub created_at: Instant
 }
 
+#[derive(Debug)]
 pub enum CacheError {
     NoEntry,
     InternalError,
+    WriteCacheError
 }
 
+#[derive(Debug)]
 pub enum CacheType {
     TimeBased,
     Persistent
 }
 
-pub fn init(cache_type: CacheType) -> Cache {
+pub fn init(cache_type: CacheType) -> Result<Cache, CacheError> {
     let mut dir : String;
 
     match cache_type {
@@ -44,7 +49,10 @@ pub fn init(cache_type: CacheType) -> Cache {
             let mut p = env::home_dir().unwrap();
             p.push(".ci-login");
             dir = p.to_str().unwrap().to_owned();
-            create_dir_all(&dir);
+            match create_dir_all(&dir) {
+                Err(_) => return Err(CacheError::InternalError),
+                _ => {}
+            }
             dir.push_str("/cache");
         }
     }
@@ -58,18 +66,19 @@ pub fn init(cache_type: CacheType) -> Cache {
             .create(true)
             .open(&dir).unwrap();
 
-    return Cache {
+    return Ok(Cache {
         file_name: dir,
         file: file,
         cache_type: cache_type,
         created_at: Instant::now()
-    };
+    });
 }
 
 impl Cache {
-    pub fn contains_server(&self, server: &String) -> bool {
-        let buffer = Vec::new();
-        let length = self.file.read_to_end(&mut buffer);
+    pub fn contains_server(&mut self, server: &String) -> bool {
+        // let buffer = Vec::new();
+        // let length = self.file.read_to_end(&mut buffer);
+        self.load_file();
         return false;
     }
 
@@ -77,29 +86,53 @@ impl Cache {
         unimplemented!()
     }
 
-    pub fn add_entry(&self, entry: CacheEntry) -> Result<bool, CacheError> {
+    pub fn add_entry(&mut self, entry: CacheEntry) -> Result<bool, CacheError> {
+        // if self.contains_server(&entry.server) {
+        //
+        // }
         // Check if entry already exists
 
         // Update if it exists
         // Create if not exists
         // Encode base64
-        // format!("{}:{}", username, password);
+        let bytes = self.encode_entry(&entry).into_bytes();
+        match self.file.write_all(&bytes) {
+            Ok(_) => return Ok(true),
+            Err(_) => return Err(CacheError::WriteCacheError)
+        }
+    }
+
+    pub fn remove_entry(&mut self, server: String) -> Result<bool, CacheError> {
         unimplemented!()
     }
 
-    pub fn remove_entry(&self, server: String) -> Result<bool, CacheError> {
+    pub fn get_entry(&self, server: String) -> Result<CacheEntry, CacheError> {
         unimplemented!()
     }
 
-    pub fn get_entry(&self, server: String) -> CacheEntry {
+    pub fn get_entries(&self) -> Result<Vec<CacheEntry>, CacheError> {
+        //let entries = self.load_file();
+
         unimplemented!()
     }
 
-    fn save(&self) -> Result<(), CacheError> {
-        Err(());
+    fn load_file(&mut self) -> Vec<(String, String)>{
+        let mut buffer = Vec::new();
+        let mut lines : Vec<(String, String)> = Vec::new();
+        let length = self.file.read_to_end(&mut buffer);
+        let f_str = String::from_utf8_lossy(&buffer);
+        for line in f_str.lines() {
+            let split_line : String = line.replace(':', " ");
+            let components : Vec<&str> = split_line.split_whitespace().collect();
+            lines.push((String::from_utf8_lossy(components.get(0).unwrap().as_bytes()).into_owned(),
+                        String::from_utf8_lossy(components.get(1).unwrap().as_bytes()).into_owned()));
+            println!("L {}", line);
+        }
+        return lines;
     }
 
-    fn load_file(&self) {
-
+    fn encode_entry(&self, entry: &CacheEntry) -> String {
+        let encoded_values = base64::encode(&format!("{}:{}", &entry.username, &entry.token).into_bytes());
+        return format!("{}:{}", &entry.server, encoded_values);
     }
 }
