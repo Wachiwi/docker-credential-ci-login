@@ -20,7 +20,8 @@ pub struct Cache {
     pub file_name: String,
     pub file: File,
     pub cache_type: CacheType,
-    pub created_at: Instant
+    pub created_at: Instant,
+    entries: Vec<(String, String)>
 }
 
 #[derive(Debug)]
@@ -59,7 +60,7 @@ pub fn init(cache_type: CacheType) -> Result<Cache, CacheError> {
 
     println!("{:?}", &dir);
 
-    let file = OpenOptions::new()
+    let mut cache = OpenOptions::new()
             .mode(0o640)
             .read(true)
             .write(true)
@@ -68,10 +69,26 @@ pub fn init(cache_type: CacheType) -> Result<Cache, CacheError> {
 
     return Ok(Cache {
         file_name: dir,
-        file: file,
+        file: cache,
         cache_type: cache_type,
-        created_at: Instant::now()
+        created_at: Instant::now(),
+        entries: load_cache(&mut cache)
     });
+}
+
+fn load_cache(cache: &mut File) -> Vec<(String, String)> {
+    let mut buffer = Vec::new();
+    let mut lines : Vec<(String, String)> = Vec::new();
+    let length = cache.read_to_end(&mut buffer);
+    let f_str = String::from_utf8_lossy(&buffer);
+    for line in f_str.lines() {
+        let split_line : String = line.replace(':', " ");
+        let components : Vec<&str> = split_line.split_whitespace().collect();
+        lines.push((String::from_utf8_lossy(components.get(0).unwrap().as_bytes()).into_owned(),
+                    String::from_utf8_lossy(components.get(1).unwrap().as_bytes()).into_owned()));
+        println!("L {}", line);
+    }
+    return lines;
 }
 
 impl Cache {
